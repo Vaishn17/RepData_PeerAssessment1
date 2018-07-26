@@ -5,21 +5,70 @@ output:
     keep_md: true
 ---
 
-
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+```
 ## Loading and preprocessing the data
-
+```{r, echo =TRUE}
+activity <- read.table("activity.csv", sep =",", header=TRUE)
+summary(activity)
+meaningful_steps <- activity[!is.na(activity$steps),]
+meaningful_steps$date <- as.Date(meaningful_steps$date)
+by_day <- group_by(meaningful_steps, date)
+steps_by_day <- summarise(by_day, total = sum(steps))
+summary(steps_by_day)
+```
 
 
 ## What is mean total number of steps taken per day?
+Histogram of the steps per day:
 
+```{r, echo=TRUE}
+ggplot(steps_by_day, aes(total)) + geom_histogram()
+```
+
+Mean of steps taken per day is 10,766 and median is 10,765.
 
 
 ## What is the average daily activity pattern?
 
 
+###Time series Plot:
+```{r, echo = TRUE}
+steps_by_interval <- aggregate(steps ~ interval, meaningful_steps, mean)
+plot(steps_by_interval$interval, steps_by_interval$steps, type = 'l', main = "Averag number of steps over all th days", xlab = "Interval", ylab = "Average number of steps")
+```
+
 
 ## Imputing missing values
 
+Total number of NA:
+```{r, echo = TRUE}
+sum(is.na(activity$steps))
+impute_activity <- activity
+impute_activity$steps[is.na(impute_activity$steps)] <- mean(impute_activity$steps, na.rm = T)
+sum(is.na(impute_activity$steps))
+impute_activity$date <- as.Date(impute_activity$date)
+impute_by_day <- group_by(impute_activity, date)
+impute_steps_by_day <- summarise(impute_by_day, total = sum(steps))
+summary(impute_steps_by_day)
+ggplot(impute_steps_by_day, aes(total)) + geom_histogram()
+```
 
+Mean=Median after imputing.
+Mean is 10,766 steps and median is 10,766 steps.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r, echo = TRUE}
+impute_activity$day <- weekdays(as.Date(impute_activity$date))
+impute_activity$weekday[(impute_activity$day == "Saturday" | impute_activity$day == "Sunday")] <- "weekend"
+impute_activity$weekday[!(impute_activity$day == "Saturday" | impute_activity$day == "Sunday")] <- "weekdays"
+impute_activity$weekday <- as.factor(impute_activity$weekday)
+summary(impute_activity)
+
+#time seires plot on 5 minute interval(x-axis) and avg number of steps taken, averaged across all weekdays or weekends.
+ggplot(impute_activity, aes(interval, steps)) + geom_smooth(na.rm = TRUE) + facet_wrap(~weekday)
+```
